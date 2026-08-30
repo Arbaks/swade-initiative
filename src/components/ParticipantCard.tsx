@@ -38,6 +38,7 @@ export function ParticipantCard({
   onToggleCondition,
   onAddCustomCondition,
   onRemoveCustomCondition,
+  readOnly = false,
 }: {
   participant: Participant
   isActive: boolean
@@ -48,6 +49,7 @@ export function ParticipantCard({
   onToggleCondition: (condition: StandardCondition) => void
   onAddCustomCondition: (value: string) => void
   onRemoveCustomCondition: (value: string) => void
+  readOnly?: boolean
 }) {
   const [conditionsOpen, setConditionsOpen] = useState(false)
   const [customCondition, setCustomCondition] = useState('')
@@ -61,7 +63,7 @@ export function ParticipantCard({
 
   return (
     <article className={`participant-card ${participant.defeated ? 'defeated' : ''} ${participant.wildCard ? 'wild' : ''} ${isActive ? 'active-turn' : ''}`}>
-      {participant.defeated && (
+      {participant.defeated && !readOnly && (
         <div className="defeated-action-row">
           <strong>Участник выбыл</strong>
           <div>
@@ -86,12 +88,12 @@ export function ParticipantCard({
           <span className="participant-type">{participant.wildCard ? 'Дикая карта' : 'Статист'}</span>
         </div>
         <div className="participant-card-actions">
-          {!participant.defeated && (
+          {!participant.defeated && !readOnly && (
             <button className="card-action-button defeat" type="button" onClick={onToggleDefeated}>
               Выбыл
             </button>
           )}
-          <button className="icon-button" type="button" onClick={onOpenSettings} aria-label="Настройки участника">⋮</button>
+          {!readOnly && <button className="icon-button" type="button" onClick={onOpenSettings} aria-label="Настройки участника">⋮</button>}
         </div>
       </header>
 
@@ -101,12 +103,12 @@ export function ParticipantCard({
           <div className="stat-block">
             <span>Ранения</span>
             {participant.woundsEnabled ? (
-              <CounterDots value={participant.wounds} max={participant.maxWounds} onChange={(wounds) => onSetNumbers({ wounds })} disabled={participant.defeated} />
+              <CounterDots value={participant.wounds} max={participant.maxWounds} onChange={(wounds) => onSetNumbers({ wounds })} disabled={participant.defeated || readOnly} />
             ) : <span className="muted-value">—</span>}
           </div>
           <div className="stat-block">
             <span>Усталость</span>
-            <CounterDots value={participant.fatigue} max={2} onChange={(fatigue) => onSetNumbers({ fatigue })} disabled={participant.defeated} />
+            <CounterDots value={participant.fatigue} max={2} onChange={(fatigue) => onSetNumbers({ fatigue })} disabled={participant.defeated || readOnly} />
           </div>
           {(participant.rules.quick || participant.rules.hesitant || participant.rules.levelHeaded > 0) && (
             <div className="rule-mini-list">
@@ -120,47 +122,53 @@ export function ParticipantCard({
       </div>
 
       <div className="condition-row">
-        <div className="condition-add-wrap">
-          <button
-            className="condition-add-button"
-            type="button"
-            aria-label="Добавить состояние"
-            title="Добавить состояние"
-            onClick={() => setConditionsOpen((open) => !open)}
-          >+
-          </button>
-          {conditionsOpen && (
-            <div className="condition-popover">
-              <strong>Состояния</strong>
-              {standardConditions.map((condition) => (
-                <button
-                  key={condition}
-                  type="button"
-                  className={participant.conditions.includes(condition) ? 'active' : ''}
-                  onClick={() => onToggleCondition(condition)}
-                >
-                  <span>{conditionLabels[condition]}</span>
-                  <span>{participant.conditions.includes(condition) ? '✓' : '+'}</span>
-                </button>
-              ))}
-              <div className="condition-custom-add">
-                <input
-                  value={customCondition}
-                  onChange={(e) => setCustomCondition(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustom() } }}
-                  placeholder="Своё состояние"
-                />
-                <button type="button" onClick={addCustom}>+</button>
+        {!readOnly && (
+          <div className="condition-add-wrap">
+            <button
+              className="condition-add-button"
+              type="button"
+              aria-label="Добавить состояние"
+              title="Добавить состояние"
+              onClick={() => setConditionsOpen((open) => !open)}
+            >+
+            </button>
+            {conditionsOpen && (
+              <div className="condition-popover">
+                <strong>Состояния</strong>
+                {standardConditions.map((condition) => (
+                  <button
+                    key={condition}
+                    type="button"
+                    className={participant.conditions.includes(condition) ? 'active' : ''}
+                    onClick={() => onToggleCondition(condition)}
+                  >
+                    <span>{conditionLabels[condition]}</span>
+                    <span>{participant.conditions.includes(condition) ? '✓' : '+'}</span>
+                  </button>
+                ))}
+                <div className="condition-custom-add">
+                  <input
+                    value={customCondition}
+                    onChange={(e) => setCustomCondition(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustom() } }}
+                    placeholder="Своё состояние"
+                  />
+                  <button type="button" onClick={addCustom}>+</button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-        {participant.conditions.map((condition) => (
+            )}
+          </div>
+        )}
+        {participant.conditions.map((condition) => readOnly ? (
+          <span key={condition} className={`condition-chip ${condition}`}>{conditionLabels[condition]}</span>
+        ) : (
           <button key={condition} type="button" className={`condition-chip ${condition}`} title="Нажмите, чтобы снять" onClick={() => onToggleCondition(condition)}>
             {conditionLabels[condition]}
           </button>
         ))}
-        {participant.customConditions.map((condition) => (
+        {participant.customConditions.map((condition) => readOnly ? (
+          <span key={condition} className="condition-chip custom">{condition}</span>
+        ) : (
           <button key={condition} type="button" className="condition-chip custom" title="Нажмите, чтобы снять" onClick={() => onRemoveCustomCondition(condition)}>
             {condition}
           </button>

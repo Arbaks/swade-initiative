@@ -7,14 +7,16 @@ export function InitiativeList({
   activeParticipantId,
   roundComplete,
   onNextTurn,
+  readOnly = false,
 }: {
   participants: Participant[]
   activeParticipantId: string | null
   roundComplete: boolean
   onNextTurn: () => void
+  readOnly?: boolean
 }) {
   const sorted = sortInitiative(participants)
-  const canAdvance = sorted.length > 0 && !roundComplete
+  const canAdvance = sorted.length > 0 && !roundComplete && !readOnly
 
   return (
     <aside className={`initiative-panel panel ${roundComplete ? 'round-complete' : ''}`}>
@@ -24,7 +26,7 @@ export function InitiativeList({
           <span className="panel-hint">Joker → A → K → … → 2</span>
         </div>
         <button className="next-turn-button" type="button" onClick={onNextTurn} disabled={!canAdvance}>
-          {roundComplete ? 'Раунд завершён' : 'Следующий ход →'}
+          {roundComplete ? 'Раунд завершён' : readOnly ? 'Ход ведёт мастер' : 'Следующий ход →'}
         </button>
       </div>
       <div className="initiative-list">

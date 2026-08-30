@@ -50,3 +50,17 @@ TypeScript-код приложения также был проверен лок
 - Active cards no longer expose `Удалить`; they must be marked `Выбыл` first.
 - Settings modal also only exposes deletion for defeated participants.
 - Game engine rejects deletion of a non-defeated participant as an additional safety guard.
+
+## v6 spectator multiplayer
+
+- Firebase Web App config встроен в клиент.
+- Firebase SDK загружается модульно с официального gstatic CDN, поэтому новая npm-зависимость не требуется.
+- Ведущий может создать room с коротким кодом и скопировать spectator link.
+- Realtime Database URL задаётся runtime один раз и включается в room link.
+- Firebase Anonymous Auth используется для стабильного owner UID ведущего и spectator UID игроков.
+- Владелец комнаты восстанавливает удалённый snapshot после F5, если anonymous UID браузера сохранился.
+- Spectator получает GameState отдельным remote snapshot: его собственный localStorage не перезаписывается просмотром чужой комнаты.
+- Spectator UI read-only: нет раздачи, изменения состояний, счётчиков, удаления, настроек или выбора Level Headed.
+- Активный участник, инициатива, карточки и журнал продолжают обновляться в реальном времени.
+- При потере соединения ведущий продолжает играть локально; spectator видит последнее полученное состояние и индикатор связи.
+- Security Rules вынесены в `firebase-database.rules.json`: root closed, room read for authenticated clients, write only by room owner.
