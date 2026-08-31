@@ -1,0 +1,13 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$roomId": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.child('ownerId').val() === auth.uid) || (data.exists() && data.child('ownerId').val() === auth.uid && newData.child('ownerId').val() === auth.uid))",
+        ".validate": "newData.hasChildren(['ownerId', 'state', 'createdAt', 'updatedAt']) && newData.child('ownerId').isString()"
+      }
+    }
+  }
+}
