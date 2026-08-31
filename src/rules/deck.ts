@@ -40,3 +40,11 @@ export function shuffleDiscardIntoDeck(deck: DeckState): DeckState {
     cycle: deck.cycle + 1,
   }
 }
+
+export function shuffleAllIntoDeck(deck: DeckState, cardsInPlay: PlayingCard[] = []): DeckState {
+  return {
+    drawPile: shuffle([...deck.drawPile, ...deck.discardPile, ...cardsInPlay]),
+    discardPile: [],
+    cycle: deck.cycle + 1,
+  }
+}

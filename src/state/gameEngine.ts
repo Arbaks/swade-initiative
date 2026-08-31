@@ -7,7 +7,7 @@ import type {
   StandardCondition,
 } from '../models/game'
 import { cardText, isFiveOrLower } from '../rules/cards'
-import { discard, drawOne, newDeck, shuffleDiscardIntoDeck } from '../rules/deck'
+import { discard, drawOne, newDeck, shuffleAllIntoDeck, shuffleDiscardIntoDeck } from '../rules/deck'
 import { chooseHesitantCard, sortInitiative } from '../rules/initiative'
 
 const uid = () => crypto.randomUUID()
@@ -336,6 +336,22 @@ export function manualDraw(state: GameState, participantId: string): GameState {
 }
 
 export function reshuffle(state: GameState): GameState {
-  const next = { ...state, deck: shuffleDiscardIntoDeck(state.deck), jokerDrawnThisRound: false }
-  return pushEvents(next, nowEvent(state.round, 'deck', 'Сброс перемешан обратно в колоду.'))
+  const initiativeCards = state.participants.flatMap((participant) => participant.initiative ? [participant.initiative] : [])
+  const pendingCards = state.pendingChoices.flatMap((choice) => choice.cards)
+  const cardsInPlay = [...initiativeCards, ...pendingCards]
+
+  const next: GameState = {
+    ...state,
+    deck: shuffleAllIntoDeck(state.deck, cardsInPlay),
+    participants: state.participants.map((participant) => ({ ...participant, initiative: null })),
+    pendingChoices: [],
+    activeParticipantId: null,
+    roundComplete: state.round > 0,
+    jokerDrawnThisRound: false,
+  }
+
+  return pushEvents(
+    next,
+    nowEvent(state.round, 'deck', 'Все карты со стола и из сброса собраны и перемешаны обратно в колоду.'),
+  )
 }

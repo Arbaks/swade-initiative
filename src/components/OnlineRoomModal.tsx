@@ -5,7 +5,6 @@ import { Modal } from './Modal'
 export function OnlineRoomModal({
   role,
   roomId,
-  databaseUrl,
   shareUrl,
   connected,
   error,
@@ -15,15 +14,13 @@ export function OnlineRoomModal({
 }: {
   role: OnlineRole
   roomId: string
-  databaseUrl: string
   shareUrl: string
   connected: boolean
   error: string | null
   onClose: () => void
-  onCreate: (databaseUrl: string) => Promise<unknown>
+  onCreate: () => Promise<unknown>
   onLeave: () => void
 }) {
-  const [url, setUrl] = useState(databaseUrl)
   const [working, setWorking] = useState(false)
   const [copied, setCopied] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
@@ -32,7 +29,7 @@ export function OnlineRoomModal({
     setWorking(true)
     setLocalError(null)
     try {
-      await onCreate(url)
+      await onCreate()
     } catch (reason) {
       setLocalError(reason instanceof Error ? reason.message : 'Не удалось создать комнату.')
     } finally {
@@ -58,18 +55,9 @@ export function OnlineRoomModal({
       {role === 'local' && (
         <div className="online-modal-content">
           <p className="online-lead">Создайте комнату и отправьте игрокам одну ссылку. Они увидят стол в режиме наблюдателя и будут получать изменения в реальном времени.</p>
-          <label className="field-label">
-            URL Realtime Database
-            <input
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              placeholder="https://…firebasedatabase.app"
-              autoFocus
-            />
-          </label>
-          <p className="helper-text">Firebase Console → Realtime Database. URL показан в верхней части страницы базы. Игрокам его вводить не придётся: он попадёт в ссылку комнаты автоматически.</p>
+          <p className="helper-text">Firebase уже настроен для этого приложения — ведущему и игрокам не нужно знать адрес базы.</p>
           {shownError && <div className="online-error">{shownError}</div>}
-          <button className="online-primary-button" type="button" disabled={working || !url.trim()} onClick={() => void create()}>
+          <button className="online-primary-button" type="button" disabled={working} onClick={() => void create()}>
             {working ? 'Создаём комнату…' : 'Создать онлайн-стол'}
           </button>
         </div>

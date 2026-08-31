@@ -137,8 +137,12 @@ export default function App() {
               <button className="action-button neutral" onClick={() => setAddOpen(true)}>
                 <span className="action-icon">＋</span><span><strong>Добавить участника</strong><small>ДК или статист</small></span>
               </button>
-              <button className="action-button neutral" onClick={game.reshuffle} disabled={state.deck.discardPile.length === 0}>
-                <span className="action-icon">⤨</span><span><strong>Перемешать</strong><small>Вернуть сброс в колоду</small></span>
+              <button
+                className="action-button neutral"
+                onClick={game.reshuffle}
+                disabled={state.deck.discardPile.length === 0 && !state.participants.some((participant) => participant.initiative) && state.pendingChoices.length === 0}
+              >
+                <span className="action-icon">⤨</span><span><strong>Перемешать</strong><small>Собрать все карты в колоду</small></span>
               </button>
             </div>
           )}
@@ -223,7 +227,6 @@ export default function App() {
         <OnlineRoomModal
           role={multiplayer.role}
           roomId={multiplayer.roomId}
-          databaseUrl={multiplayer.databaseUrl}
           shareUrl={multiplayer.shareUrl}
           connected={multiplayer.connected}
           error={multiplayer.error}

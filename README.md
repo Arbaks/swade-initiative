@@ -1,12 +1,20 @@
 # SWADE Initiative Tracker
 
-Клиентский трекер инициативы для Savage Worlds Adventure Edition с опциональным spectator multiplayer через Firebase Realtime Database.
+Клиентский трекер инициативы для Savage Worlds Adventure Edition с spectator multiplayer через Firebase Realtime Database.
 
 ## Запуск локально
 
 На Windows после установки Node.js LTS можно запустить `START.bat`.
 
-Или вручную:
+Для онлайн-комнат сначала создайте файл `.env.local` рядом с `package.json`:
+
+```text
+VITE_FIREBASE_API_KEY=ваш_firebase_web_api_key
+```
+
+`.env.local` находится в `.gitignore` и не попадёт в репозиторий.
+
+Затем:
 
 ```bash
 npm install
@@ -22,73 +30,63 @@ npm run build
 
 ## GitHub Pages
 
-Проект настроен под репозиторий:
+Проект настроен под:
 
 ```text
 https://github.com/Arbaks/swade-initiative
 ```
 
-поэтому в `vite.config.ts` используется:
+и использует:
 
 ```ts
 base: '/swade-initiative/'
 ```
 
-При публикации через GitHub Pages адрес приложения будет вида:
+### Firebase key для GitHub Actions
+
+Конкретный Firebase Web API key больше не хранится в исходниках. Добавьте его в репозитории:
+
+`Settings → Secrets and variables → Actions → New repository secret`
+
+Имя секрета:
 
 ```text
-https://arbaks.github.io/swade-initiative/
+VITE_FIREBASE_API_KEY
 ```
 
-## Онлайн-стол / spectator multiplayer
+Значение — Firebase Web API key проекта.
 
-Firebase Web App config уже добавлен в `src/multiplayer/firebase.ts`.
+Workflow `.github/workflows/deploy.yml` передаёт этот secret только на шаг `npm run build`.
 
-Перед использованием онлайн-комнат нужно сделать два действия в Firebase Console:
+> Важно: Firebase Web API key является публичным идентификатором клиентского приложения, а не серверным секретом. После сборки значение всё равно можно увидеть в JavaScript, загруженном браузером. Доступ к данным должен защищаться Firebase Authentication, Database Security Rules и при необходимости App Check.
+
+## Онлайн-стол
+
+Realtime Database для приложения зафиксирована в конфигурации:
+
+```text
+https://swade-tracker-default-rtdb.europe-west1.firebasedatabase.app
+```
+
+Пользователю больше не нужно вводить URL базы, а ссылка комнаты содержит только `?room=XXXXXX`.
+
+Перед использованием комнат в Firebase Console:
 
 1. `Authentication` → `Sign-in method` → включить **Anonymous**.
-2. `Realtime Database` → `Rules` → заменить правила содержимым файла `firebase-database.rules.json` и нажать **Publish**.
+2. `Realtime Database` → `Rules` → опубликовать правила из `firebase-database.rules.json`.
 
-Firebase требует отдельный URL Realtime Database. Он показан на странице `Realtime Database` и выглядит примерно так:
+Ведущий нажимает `Онлайн → Создать онлайн-стол`, копирует ссылку и отправляет её игрокам. Игроки подключаются в режиме наблюдателя.
 
-```text
-https://PROJECT-default-rtdb.REGION.firebasedatabase.app
-```
+## Кнопка «Перемешать»
 
-или для `us-central1`:
+Ручное перемешивание теперь собирает обратно в колоду **все физические карты**:
 
-```text
-https://PROJECT-default-rtdb.firebaseio.com
-```
+- остаток колоды;
+- общий сброс;
+- текущие карты инициативы участников;
+- карты, которые ещё ожидают выбора при Холодных Нервах.
 
-Точный URL зависит от выбранного региона, поэтому приложение просит ведущего вставить его один раз при первом создании онлайн-стола. URL сохраняется в браузере и автоматически добавляется в ссылку комнаты — игрокам его вводить не нужно.
-
-### Как пользоваться
-
-Ведущий:
-
-1. Нажать `Онлайн` в верхней панели.
-2. Вставить URL Realtime Database.
-3. Нажать `Создать онлайн-стол`.
-4. Скопировать ссылку и отправить игрокам.
-
-Игрок:
-
-1. Открыть ссылку.
-2. Автоматически подключиться как анонимный spectator.
-3. Смотреть стол и realtime-обновления без прав редактирования.
-
-Ведущий остаётся единственным клиентом, который меняет `GameState`. Игроки не считают правила инициативы самостоятельно, а получают готовый snapshot игры.
-
-### Безопасность MVP
-
-- корень Realtime Database закрыт;
-- читать конкретную комнату могут только анонимно авторизованные клиенты;
-- записывать комнату может только Firebase UID, создавший её;
-- игрок не может изменить состояние через UI или напрямую записать данные в комнату;
-- код комнаты случайный и корень `rooms` нельзя прочитать списком через правила.
-
-Anonymous UID ведущего хранится Firebase Auth в браузере. Если полностью очистить данные сайта, браузер может потерять право владельца старой комнаты; локальная сессия и JSON export/import остаются отдельными механизмами сохранения.
+После перемешивания у участников очищается текущая инициатива и активный ход. Если бой уже шёл, приложение предлагает сдать новую инициативу.
 
 ## Что уже есть в MVP
 

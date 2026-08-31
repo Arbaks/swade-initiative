@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { GameState } from '../models/game'
-import { getFirebaseContext, normalizeDatabaseUrl, serializableState, type FirebaseContext, type RoomRecord } from './firebase'
+import { getFirebaseContext, serializableState, type FirebaseContext, type RoomRecord } from './firebase'
 
 export type OnlineRole = 'local' | 'connecting' | 'host' | 'spectator'
 
-const DATABASE_URL_KEY = 'swade-initiative-tracker:firebase-database-url'
 const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
 function makeRoomCode(length = 6): string {
@@ -31,18 +30,14 @@ function roomFromSnapshot(value: unknown): RoomRecord | null {
   }
 }
 
-function urlRoomParams() {
-  const params = new URLSearchParams(window.location.search)
-  return {
-    roomId: params.get('room')?.toUpperCase() ?? '',
-    databaseUrl: params.get('db') ?? '',
-  }
+function roomFromUrl(): string {
+  return new URLSearchParams(window.location.search).get('room')?.toUpperCase() ?? ''
 }
 
-function setRoomInUrl(roomId: string, databaseUrl: string) {
+function setRoomInUrl(roomId: string) {
   const url = new URL(window.location.href)
   url.searchParams.set('room', roomId)
-  url.searchParams.set('db', databaseUrl)
+  url.searchParams.delete('db') // migrate old v6 links silently
   window.history.replaceState({}, '', url)
 }
 
@@ -56,10 +51,6 @@ function clearRoomFromUrl() {
 export function useRoomSync(localState: GameState, restoreHostState: (state: GameState) => void) {
   const [role, setRole] = useState<OnlineRole>('local')
   const [roomId, setRoomId] = useState('')
-  const [databaseUrl, setDatabaseUrl] = useState(() => {
-    const fromUrl = urlRoomParams().databaseUrl
-    return fromUrl || localStorage.getItem(DATABASE_URL_KEY) || ''
-  })
   const [remoteState, setRemoteState] = useState<GameState | null>(null)
   const [connected, setConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -100,17 +91,16 @@ export function useRoomSync(localState: GameState, restoreHostState: (state: Gam
     unsubscribersRef.current.push(unsubscribe)
   }, [])
 
-  const connectToExistingRoom = useCallback(async (codeInput: string, databaseUrlInput: string) => {
+  const connectToExistingRoom = useCallback(async (codeInput: string) => {
     const code = codeInput.trim().toUpperCase()
     if (!code) throw new Error('Не указан код комнаты.')
-    const normalizedUrl = normalizeDatabaseUrl(databaseUrlInput)
 
     cleanupListeners()
     setRole('connecting')
     setError(null)
 
     try {
-      const context = await getFirebaseContext(normalizedUrl)
+      const context = await getFirebaseContext()
       const roomRef = context.db.ref(context.database, `rooms/${code}`)
       const snapshot = await context.db.get(roomRef)
       const room = roomFromSnapshot(snapshot.val())
@@ -118,10 +108,8 @@ export function useRoomSync(localState: GameState, restoreHostState: (state: Gam
 
       contextRef.current = context
       roomIdRef.current = code
-      localStorage.setItem(DATABASE_URL_KEY, normalizedUrl)
       setRoomId(code)
-      setDatabaseUrl(normalizedUrl)
-      setRoomInUrl(code, normalizedUrl)
+      setRoomInUrl(code)
       watchConnection(context)
 
       if (room.ownerId === context.uid) {
@@ -145,14 +133,13 @@ export function useRoomSync(localState: GameState, restoreHostState: (state: Gam
     }
   }, [cleanupListeners, restoreHostState, watchConnection, watchSpectatorState])
 
-  const createRoom = useCallback(async (databaseUrlInput: string) => {
-    const normalizedUrl = normalizeDatabaseUrl(databaseUrlInput)
+  const createRoom = useCallback(async () => {
     cleanupListeners()
     setRole('connecting')
     setError(null)
 
     try {
-      const context = await getFirebaseContext(normalizedUrl)
+      const context = await getFirebaseContext()
       let code = ''
       let roomReference: unknown = null
 
@@ -177,10 +164,8 @@ export function useRoomSync(localState: GameState, restoreHostState: (state: Gam
 
       contextRef.current = context
       roomIdRef.current = code
-      localStorage.setItem(DATABASE_URL_KEY, normalizedUrl)
       setRoomId(code)
-      setDatabaseUrl(normalizedUrl)
-      setRoomInUrl(code, normalizedUrl)
+      setRoomInUrl(code)
       setRemoteState(null)
       expectedHostRestoreRef.current = null
       setRole('host')
@@ -212,14 +197,9 @@ export function useRoomSync(localState: GameState, restoreHostState: (state: Gam
   useEffect(() => {
     if (initialConnectStartedRef.current) return
     initialConnectStartedRef.current = true
-    const params = urlRoomParams()
-    if (!params.roomId) return
-    const url = params.databaseUrl || localStorage.getItem(DATABASE_URL_KEY) || ''
-    if (!url) {
-      setError('В ссылке комнаты нет URL Realtime Database. Попросите ведущего прислать новую ссылку.')
-      return
-    }
-    void connectToExistingRoom(params.roomId, url).catch(() => undefined)
+    const code = roomFromUrl()
+    if (!code) return
+    void connectToExistingRoom(code).catch(() => undefined)
   }, [connectToExistingRoom])
 
   useEffect(() => {
@@ -249,17 +229,16 @@ export function useRoomSync(localState: GameState, restoreHostState: (state: Gam
   useEffect(() => cleanupListeners, [cleanupListeners])
 
   const shareUrl = useMemo(() => {
-    if (!roomId || !databaseUrl) return ''
+    if (!roomId) return ''
     const url = new URL(window.location.href)
     url.searchParams.set('room', roomId)
-    url.searchParams.set('db', databaseUrl)
+    url.searchParams.delete('db')
     return url.toString()
-  }, [roomId, databaseUrl])
+  }, [roomId])
 
   return {
     role,
     roomId,
-    databaseUrl,
     remoteState,
     connected,
     error,

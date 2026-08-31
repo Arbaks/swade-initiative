@@ -2,9 +2,12 @@ import type { GameState } from '../models/game'
 
 const FIREBASE_VERSION = '12.18.0'
 
+export const FIREBASE_DATABASE_URL = 'https://swade-tracker-default-rtdb.europe-west1.firebasedatabase.app'
+
 const firebaseConfig = {
-  apiKey: 'AIzaSyACw9bHy2BC4uWWgviuAPQsAuGgK2XENqI',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: 'swade-tracker.firebaseapp.com',
+  databaseURL: FIREBASE_DATABASE_URL,
   projectId: 'swade-tracker',
   storageBucket: 'swade-tracker.firebasestorage.app',
   messagingSenderId: '509975349317',
@@ -84,27 +87,14 @@ async function loadModules() {
   return modulesPromise
 }
 
-export function normalizeDatabaseUrl(value: string): string {
-  const cleaned = value.trim().replace(/\/+$/, '')
-  if (!cleaned) throw new Error('Укажите URL Realtime Database.')
-
-  let parsed: URL
-  try {
-    parsed = new URL(cleaned)
-  } catch {
-    throw new Error('URL базы выглядит некорректно.')
+function assertFirebaseConfig() {
+  if (!firebaseConfig.apiKey) {
+    throw new Error('Не настроен VITE_FIREBASE_API_KEY. Добавьте его в .env.local или GitHub Actions secret.')
   }
-
-  if (parsed.protocol !== 'https:') throw new Error('URL Realtime Database должен начинаться с https://')
-  if (!parsed.hostname.endsWith('.firebaseio.com') && !parsed.hostname.endsWith('.firebasedatabase.app')) {
-    throw new Error('Это не похоже на URL Firebase Realtime Database.')
-  }
-
-  return cleaned
 }
 
-export async function getFirebaseContext(databaseUrl: string): Promise<FirebaseContext> {
-  const normalizedUrl = normalizeDatabaseUrl(databaseUrl)
+export async function getFirebaseContext(): Promise<FirebaseContext> {
+  assertFirebaseConfig()
   const modules = await loadModules()
 
   if (!firebaseApp) {
@@ -124,7 +114,7 @@ export async function getFirebaseContext(databaseUrl: string): Promise<FirebaseC
     })
   })
   const uid = restoredUser?.uid ?? (await modules.auth.signInAnonymously(auth)).user.uid
-  const database = modules.database.getDatabase(firebaseApp, normalizedUrl)
+  const database = modules.database.getDatabase(firebaseApp, FIREBASE_DATABASE_URL)
 
   return { uid, database, db: modules.database }
 }
