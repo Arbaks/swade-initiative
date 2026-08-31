@@ -19,3 +19,10 @@
 ## Deployment note
 
 The repository must define the GitHub Actions secret `VITE_FIREBASE_API_KEY`. The Firebase Web API key is public at browser runtime; Firebase Security Rules/Auth/App Check remain the actual data-access boundary.
+
+## v8 — Firebase snapshot normalization
+- Firebase RTDB empty arrays are normalized back to `[]` before reaching React.
+- Numeric-keyed Firebase list objects are accepted as arrays.
+- Nested participant arrays (`conditions`, `customConditions`, `history`) are normalized.
+- Deck piles, pending choices and event log are normalized.
+- This fixes spectator crashes such as `Cannot read properties of undefined (reading '0')`.
